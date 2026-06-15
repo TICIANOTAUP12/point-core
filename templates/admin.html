@@ -124,6 +124,16 @@
     </section>
 
     <section class="card">
+      <h2>WhatsApp Cloud API</h2>
+      <div class="status-row">
+        <span class="dot" id="wa-dot"></span>
+        <span id="wa-label">Verificando…</span>
+      </div>
+      <p class="case-desc" id="wa-webhook-url" style="margin-top: 0.75rem;"></p>
+      <p class="case-desc" id="wa-missing" style="margin-top: 0.25rem;"></p>
+    </section>
+
+    <section class="card">
       <h2>Configuración (solo lectura)</h2>
       <dl class="config-grid" id="config-grid"></dl>
     </section>
@@ -167,6 +177,10 @@
     const meta = document.getElementById("meta");
     const healthDot = document.getElementById("health-dot");
     const healthLabel = document.getElementById("health-label");
+    const waDot = document.getElementById("wa-dot");
+    const waLabel = document.getElementById("wa-label");
+    const waWebhookUrl = document.getElementById("wa-webhook-url");
+    const waMissing = document.getElementById("wa-missing");
     const configGrid = document.getElementById("config-grid");
 
     function metaPayload(text) {
@@ -191,6 +205,19 @@
         const h = data.health;
         healthDot.className = "dot ok";
         healthLabel.textContent = `${h.service} v${h.version} — ${h.status}`;
+        const wa = data.whatsapp || {};
+        waDot.className = wa.configured ? "dot ok" : "dot err";
+        waLabel.textContent = wa.configured
+          ? "WhatsApp configurado — listo para webhook Meta"
+          : "WhatsApp incompleto — faltan variables de entorno";
+        waWebhookUrl.innerHTML = wa.webhook_url
+          ? `Webhook URL para Meta: <code>${wa.webhook_url}</code>`
+          : "";
+        waMissing.textContent = wa.missing && wa.missing.length
+          ? `Faltan: ${wa.missing.join(", ")}`
+          : wa.signature_validation
+            ? "Validación de firma activa (WHATSAPP_APP_SECRET)"
+            : "Sin WHATSAPP_APP_SECRET — firma Meta no validada";
         configGrid.innerHTML = Object.entries(data.config)
           .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`)
           .join("");

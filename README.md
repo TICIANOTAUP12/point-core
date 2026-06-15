@@ -1,6 +1,6 @@
-# Point Once Core (Phase 1 MVP)
+# Point Once Core
 
-Rules-based NLU chat service for Agencia TA / Point Once. Lightweight FastAPI + SQLite.
+Rules-based NLU chat service for Agencia TA / Point Once. FastAPI + SQLite + WhatsApp Cloud API.
 
 **Repositorio:** https://github.com/TICIANOTAUP12/point-core
 
@@ -16,6 +16,7 @@ Or manually:
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env   # edit with Meta credentials
 uvicorn main:app --host 127.0.0.1 --port 3040 --workers 1
 ```
 
@@ -29,9 +30,59 @@ http://127.0.0.1:3040/admin
 
 Incluye:
 - Estado de salud (`/health`)
-- Configuración de entorno (solo lectura)
-- **Caso 1 — Chat API:** botones que llaman `POST /chat/message` (combo, stock, módulos, derivación humana)
-- **Caso 2 — Webhook Mock:** botones que llaman `POST /webhook/whatsapp` (payload simple o formato Meta)
+- Estado de conexión WhatsApp (variables requeridas vs faltantes)
+- Configuración de entorno (solo lectura, tokens enmascarados)
+- **Caso 1 — Chat API:** botones que llaman `POST /chat/message`
+- **Caso 2 — Webhook Mock:** botones que llaman `POST /webhook/whatsapp` (payload simple o formato Meta sin `object`)
+
+## WhatsApp Cloud API
+
+### Webhook URL (Meta Business Manager)
+
+```
+https://sistemataup.online/api/core/webhook/whatsapp
+```
+
+Nginx proxy: `/api/core/` → `http://127.0.0.1:3040/` (ver `deploy/nginx-landings.sistemataup.online.conf`).
+
+### Variables de entorno
+
+| Variable | Requerida | Descripción |
+|----------|-----------|-------------|
+| `WHATSAPP_TOKEN` | Sí | Access token permanente o temporal |
+| `WHATSAPP_PHONE_NUMBER_ID` | Sí | ID del número en Meta (API Setup) |
+| `WEBHOOK_VERIFY_TOKEN` | Sí | String personalizado para verificación GET |
+| `WHATSAPP_APP_SECRET` | Recomendada | App Secret para validar `X-Hub-Signature-256` |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | Opcional | WABA ID (referencia) |
+| `WHATSAPP_PHONE` | Opcional | Número visible (+54 264 628-1854) |
+
+Copiá `.env.example` a `.env` y completá los valores desde [Meta Business Manager](https://business.facebook.com/) → WhatsApp → API Setup.
+
+### Configuración manual en Meta
+
+1. **App Dashboard** → WhatsApp → Configuration → Webhook
+2. **Callback URL:** `https://sistemataup.online/api/core/webhook/whatsapp`
+3. **Verify token:** mismo valor que `WEBHOOK_VERIFY_TOKEN` en `.env`
+4. Click **Verify and Save**
+5. Suscríbete al campo **`messages`**
+6. Generá un **access token** con permiso `whatsapp_business_messaging`
+7. Copiá **Phone number ID** y token a `.env`
+8. Reiniciá PM2: `pm2 restart core`
+
+### Endpoints webhook
+
+| Método | Ruta | Uso |
+|--------|------|-----|
+| GET | `/webhook/whatsapp` | Verificación Meta (`hub.mode`, `hub.verify_token`, `hub.challenge`) |
+| POST | `/webhook/whatsapp` | Recibe mensajes Meta; responde vía Graph API |
+
+Payload mock para pruebas locales (devuelve JSON de chat, no envía a Meta):
+
+```bash
+curl -s -X POST http://127.0.0.1:3040/webhook/whatsapp \
+  -H 'Content-Type: application/json' \
+  -d '{"phone":"5492612345678","text":"tienen stock?"}'
+```
 
 ## API
 
@@ -47,14 +98,6 @@ curl -s http://127.0.0.1:3040/health
 curl -s -X POST http://127.0.0.1:3040/chat/message \
   -H 'Content-Type: application/json' \
   -d '{"phone":"5492612345678","text":"hola quiero 2 cymax"}'
-```
-
-### WhatsApp webhook (mock)
-
-```bash
-curl -s -X POST http://127.0.0.1:3040/webhook/whatsapp \
-  -H 'Content-Type: application/json' \
-  -d '{"phone":"5492612345678","text":"tienen stock?"}'
 ```
 
 ### Debug conversation
@@ -83,9 +126,12 @@ O desde el monorepo Landing (si aplica):
 pm2 start ../ecosystem.config.cjs --only core
 ```
 
-## Pending for real WhatsApp
+## Nginx (sistemataup.online)
 
-- Meta WhatsApp Cloud API credentials (`WHATSAPP_TOKEN`, `PHONE_NUMBER_ID`)
-- Webhook verification (GET challenge) and signature validation
-- Outbound message send via Graph API
-- Template messages for 24h window compliance
+Aplicar config con el script del monorepo Landing:
+
+```bash
+bash /home/dev_taup/proyectos/Landing/scripts/apply-nginx-landings.sh
+```
+
+Tras actualizar, el webhook queda expuesto en HTTPS vía `/api/core/`.
