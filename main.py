@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from core.database import init_db
 from models.responses import HealthResponse
-from routers import admin, chat, webhook
+from routers import admin, chat, link, webhook
 from services.conversation import get_record
 
 HOST = os.getenv("CORE_HOST", "127.0.0.1")
@@ -27,6 +27,7 @@ app = FastAPI(
 
 app.include_router(admin.router)
 app.include_router(chat.router)
+app.include_router(link.router)
 app.include_router(webhook.router)
 
 

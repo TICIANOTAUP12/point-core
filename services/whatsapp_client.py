@@ -4,6 +4,8 @@ from typing import Any
 
 import httpx
 
+from services.whatsapp_link import get_whatsapp_mode, is_api_mode
+
 logger = logging.getLogger(__name__)
 
 GRAPH_API_VERSION = "v21.0"
@@ -21,7 +23,23 @@ def get_whatsapp_config() -> dict[str, str]:
 
 
 def whatsapp_connection_status() -> dict[str, Any]:
+    mode = get_whatsapp_mode()
     config = get_whatsapp_config()
+    display_phone = os.getenv("WHATSAPP_PHONE", "+54 264 628-1854")
+
+    if mode == "link":
+        return {
+            "mode": "link",
+            "configured": True,
+            "missing": [],
+            "signature_validation": False,
+            "business_account_configured": False,
+            "display_phone": display_phone,
+            "integration": "wa.me redirect — el consumidor cierra la conversación en WhatsApp",
+            "webhook_url": None,
+            "api_enabled": False,
+        }
+
     required = {
         "WHATSAPP_TOKEN": config["token"],
         "WHATSAPP_PHONE_NUMBER_ID": config["phone_number_id"],
@@ -29,20 +47,30 @@ def whatsapp_connection_status() -> dict[str, Any]:
     }
     missing = [name for name, value in required.items() if not value]
     return {
+        "mode": "api",
         "configured": not missing,
         "missing": missing,
         "signature_validation": bool(config["app_secret"]),
         "business_account_configured": bool(config["business_account_id"]),
+        "display_phone": display_phone,
+        "integration": "WhatsApp Cloud API — envío automático vía Graph API",
         "webhook_url": "https://sistemataup.online/api/core/webhook/whatsapp",
+        "api_enabled": True,
     }
 
 
 def is_whatsapp_send_ready() -> bool:
+    if not is_api_mode():
+        return False
     config = get_whatsapp_config()
     return bool(config["token"] and config["phone_number_id"])
 
 
 async def send_text_message(to: str, text: str) -> bool:
+    if not is_api_mode():
+        logger.info("WhatsApp send skipped: WHATSAPP_MODE=link (use whatsapp_url redirect)")
+        return False
+
     config = get_whatsapp_config()
     token = config["token"]
     phone_number_id = config["phone_number_id"]
