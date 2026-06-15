@@ -1,4 +1,10 @@
-from models.catalog import AgenciaInfo, Combo
+from models.catalog import (
+    AgenciaInfo,
+    Combo,
+    LICENSE_INSTALL_REPLY,
+    STOCK_DELIVERY_REPLY,
+    SYSTEM_REQUIREMENTS_REPLY,
+)
 
 # Source of truth: Agencia_TA/src/app/App.tsx (puestos + CYMAX_UNIT_*)
 COMBOS: dict[str, Combo] = {
@@ -26,6 +32,18 @@ COMBOS: dict[str, Combo] = {
 }
 
 AGENCIA = AgenciaInfo()
+
+__all__ = [
+    "AGENCIA",
+    "COMBOS",
+    "LICENSE_INSTALL_REPLY",
+    "STOCK_DELIVERY_REPLY",
+    "SYSTEM_REQUIREMENTS_REPLY",
+    "combo_price_display",
+    "format_price",
+    "get_combo",
+    "list_combos",
+]
 
 
 def get_combo(combo_id: str) -> Combo | None:

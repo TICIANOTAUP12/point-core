@@ -1,6 +1,15 @@
 from models.conversation import ConversationRecord, ConversationState
 from models.nlu import Intent, NluResult
-from services.catalog import AGENCIA, combo_price_display, format_price, get_combo, list_combos
+from services.catalog import (
+    AGENCIA,
+    LICENSE_INSTALL_REPLY,
+    STOCK_DELIVERY_REPLY,
+    SYSTEM_REQUIREMENTS_REPLY,
+    combo_price_display,
+    format_price,
+    get_combo,
+    list_combos,
+)
 
 
 def build_reply(record: ConversationRecord, nlu: NluResult) -> str:
@@ -67,15 +76,16 @@ def _price_overview_reply(_: Intent) -> str:
 def _license_reply(_: Intent) -> str:
     return (
         "La licencia Point Once (solo software) tiene precio según tu equipo y necesidades. "
-        "Te puedo derivar con el equipo para una cotización personalizada. "
-        f"WhatsApp directo: +54 264 628-1854."
+        f"{LICENSE_INSTALL_REPLY} "
+        f"{SYSTEM_REQUIREMENTS_REPLY} "
+        "¿Te derivamos con el equipo para cotizar e instalar?"
     )
 
 
 def _stock_reply(_: Intent) -> str:
     return (
-        "Tenemos stock disponible para entrega de los combos Cymax, Básico y Mini PC. "
-        "¿Querés que te confirme disponibilidad de alguno en particular?"
+        f"{STOCK_DELIVERY_REPLY} "
+        "¿Qué combo te interesa (básico, cymax o mini) y cuántos puestos?"
     )
 
 
@@ -109,11 +119,17 @@ def _combo_purchase_reply(intent: Intent) -> str:
 
     efectivo, cuotas = combo_price_display(combo, cantidad)
     qty_line = f" ({cantidad} puesto{'s' if cantidad > 1 else ''})" if combo.has_cantidad and cantidad > 1 else ""
+    delivery_note = (
+        f"\n\n{STOCK_DELIVERY_REPLY}"
+        if combo_id in {"basico", "cymax", "mini"}
+        else ""
+    )
     return (
         f"¡Genial! El {combo.nombre}{qty_line}:\n"
         f"• Efectivo/transferencia: {efectivo}\n"
-        f"• Financiado: {cuotas}\n\n"
-        "¿Confirmamos y te derivo con el equipo para los próximos pasos?"
+        f"• Financiado: {cuotas}"
+        f"{delivery_note}\n\n"
+        "¿Confirmamos con seña y te derivo con el equipo?"
     )
 
 

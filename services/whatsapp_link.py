@@ -36,11 +36,13 @@ INTENT_MESSAGES: dict[str, str] = {
     ),
     "consulta_licencia": (
         "Hola, ya tengo mi equipo y quisiera consultar el precio de la licencia de Point Once. "
-        "¿Podemos conversar sobre las opciones?"
+        "Mi PC cumple Windows 10/11, 8 GB RAM, SSD 256 GB e i3 10.ª gen. "
+        "¿Podemos instalar el mismo día?"
     ),
     "consulta_stock": (
-        "Hola, consulto disponibilidad de stock de equipos Point Once. "
-        "¿Qué combos tienen listos para entrega?"
+        "Hola, consulto plazos de entrega de equipos Point Once. "
+        "Entiendo que los combos se piden a proveedor y con seña la entrega suele ser en menos de una semana. "
+        "¿Qué combo tienen disponible?"
     ),
     "modulo_locales": (
         "Hola, me interesa el módulo de Locales de Point Once para administrar varias sucursales "
