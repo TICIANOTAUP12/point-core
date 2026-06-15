@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Point Once Core — Admin</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2f3d;
+      --text: #e8eaef;
+      --muted: #8b93a7;
+      --accent: #5b8def;
+      --accent-hover: #4a7de0;
+      --ok: #3ecf8e;
+      --warn: #f5a623;
+      --radius: 8px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f4f6fa;
+        --surface: #ffffff;
+        --border: #dde1ea;
+        --text: #1a1d27;
+        --muted: #5c6370;
+        --accent: #2563eb;
+        --accent-hover: #1d4ed8;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    header { margin-bottom: 2rem; }
+    header h1 { font-size: 1.5rem; font-weight: 600; }
+    header p { color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .card h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    .status-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0;
+    }
+    .dot.ok { background: var(--ok); }
+    .dot.err { background: #ef4444; }
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.5rem 1rem;
+      font-size: 0.85rem;
+    }
+    .config-grid dt { color: var(--muted); }
+    .config-grid dd { font-family: ui-monospace, monospace; word-break: break-all; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+    button {
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    button.primary:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .case-desc { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
+    #output {
+      background: color-mix(in srgb, var(--bg) 60%, var(--surface));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 120px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+    .loading { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Point Once Core</h1>
+      <p>Panel de pruebas — Caso Chat API y Caso Webhook Mock</p>
+    </header>
+
+    <section class="card">
+      <h2>Estado del servicio</h2>
+      <div class="status-row">
+        <span class="dot" id="health-dot"></span>
+        <span id="health-label">Verificando…</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Configuración (solo lectura)</h2>
+      <dl class="config-grid" id="config-grid"></dl>
+    </section>
+
+    <section class="card">
+      <h2>Caso 1 — Chat API (Point Once)</h2>
+      <p class="case-desc">
+        Prueba directa vía <code>POST /chat/message</code>. Simula mensajes de consumidor Point Once.
+      </p>
+      <div class="btn-group">
+        <button class="primary" data-case="chat" data-text="hola quiero 2 cymax">Combo Cymax ×2</button>
+        <button class="primary" data-case="chat" data-text="tienen stock?">Consulta stock</button>
+        <button class="primary" data-case="chat" data-text="precio caución y locales">Módulos precio</button>
+        <button class="primary" data-case="chat" data-text="quiero hablar con un asesor">Derivar a humano</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Caso 2 — Webhook Mock (WhatsApp)</h2>
+      <p class="case-desc">
+        Prueba vía <code>POST /webhook/whatsapp</code>. Payload simple o formato Meta Cloud API.
+      </p>
+      <div class="btn-group">
+        <button data-case="webhook-simple" data-text="tienen stock?">Webhook simple — stock</button>
+        <button data-case="webhook-simple" data-text="hola quiero 2 cymax">Webhook simple — combo</button>
+        <button data-case="webhook-meta" data-text="hola quiero 2 cymax">Webhook Meta — combo</button>
+        <button data-case="webhook-meta" data-text="quiero hablar con un asesor">Webhook Meta — humano</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Respuesta</h2>
+      <div id="output">Seleccioná un botón para ejecutar una prueba.</div>
+      <p class="meta" id="meta"></p>
+    </section>
+  </div>
+
+  <script>
+    const TEST_PHONE = "5492612345678";
+    const output = document.getElementById("output");
+    const meta = document.getElementById("meta");
+    const healthDot = document.getElementById("health-dot");
+    const healthLabel = document.getElementById("health-label");
+    const configGrid = document.getElementById("config-grid");
+
+    function metaPayload(text) {
+      return {
+        entry: [{
+          changes: [{
+            value: {
+              messages: [{
+                from: TEST_PHONE,
+                text: { body: text }
+              }]
+            }
+          }]
+        }]
+      };
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch("/admin/status");
+        const data = await res.json();
+        const h = data.health;
+        healthDot.className = "dot ok";
+        healthLabel.textContent = `${h.service} v${h.version} — ${h.status}`;
+        configGrid.innerHTML = Object.entries(data.config)
+          .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`)
+          .join("");
+      } catch (e) {
+        healthDot.className = "dot err";
+        healthLabel.textContent = "Servicio no disponible";
+      }
+    }
+
+    async function runTest(btn) {
+      const caseType = btn.dataset.case;
+      const text = btn.dataset.text;
+      const allBtns = document.querySelectorAll("button[data-case]");
+      allBtns.forEach(b => b.disabled = true);
+      output.textContent = "Enviando…";
+      output.className = "loading";
+      meta.textContent = "";
+
+      const start = performance.now();
+      let url, body, label;
+
+      if (caseType === "chat") {
+        url = "/chat/message";
+        body = { phone: TEST_PHONE, text };
+        label = `POST /chat/message — "${text}"`;
+      } else if (caseType === "webhook-simple") {
+        url = "/webhook/whatsapp";
+        body = { phone: TEST_PHONE, text };
+        label = `POST /webhook/whatsapp (simple) — "${text}"`;
+      } else {
+        url = "/webhook/whatsapp";
+        body = metaPayload(text);
+        label = `POST /webhook/whatsapp (Meta mock) — "${text}"`;
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        const elapsed = (performance.now() - start).toFixed(1);
+        output.className = "";
+        output.textContent = JSON.stringify(data, null, 2);
+        meta.textContent = `${label} — HTTP ${res.status} — ${elapsed} ms`;
+      } catch (e) {
+        output.className = "";
+        output.textContent = `Error: ${e.message}`;
+        meta.textContent = label;
+      } finally {
+        allBtns.forEach(b => b.disabled = false);
+      }
+    }
+
+    document.querySelectorAll("button[data-case]").forEach(btn => {
+      btn.addEventListener("click", () => runTest(btn));
+    });
+
+    loadStatus();
+  </script>
+</body>
+</html>
