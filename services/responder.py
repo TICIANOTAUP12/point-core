@@ -1,22 +1,14 @@
 from models.conversation import ConversationRecord, ConversationState
 from models.nlu import Intent, NluResult
-from services.catalog import (
-    AGENCIA,
-    LICENSE_INSTALL_REPLY,
-    STOCK_DELIVERY_REPLY,
-    SYSTEM_REQUIREMENTS_REPLY,
-    combo_price_display,
-    format_price,
-    get_combo,
-    list_combos,
-)
+from models.catalog import LICENSE_INSTALL_REPLY, STOCK_DELIVERY_REPLY, SYSTEM_REQUIREMENTS_REPLY
+from services.catalog import AGENCIA, combo_price_display, format_price, get_combo, list_combos
 
 
 def build_reply(record: ConversationRecord, nlu: NluResult) -> str:
-    if record.state == "handoff" or nlu.needs_human:
-        return _handoff_reply()
-
     intent_types = {i.type for i in nlu.intents}
+
+    if nlu.needs_human:
+        return _handoff_reply()
 
     if "despedida" in intent_types:
         return "¡Gracias por escribirnos! Cualquier consulta, estamos por acá. 👋"
@@ -30,7 +22,7 @@ def build_reply(record: ConversationRecord, nlu: NluResult) -> str:
         )
 
     for intent in nlu.intents:
-        if intent.type == "saludo":
+        if intent.type in {"saludo", "desconocido"}:
             continue
         segment = _reply_for_intent(intent, record.state)
         if segment and segment not in parts:
@@ -39,7 +31,7 @@ def build_reply(record: ConversationRecord, nlu: NluResult) -> str:
     if not parts:
         if record.state == "clarifying_combo":
             return _clarify_combo_reply()
-        return _handoff_reply()
+        return _clarify_combo_reply()
 
     return "\n\n".join(parts)
 
@@ -55,7 +47,7 @@ def _reply_for_intent(intent: Intent, state: ConversationState) -> str:
         "modulo_demanda_estado": _modulo_reply,
         "implementar": _implement_reply,
         "combo_compra": _combo_purchase_reply,
-        "desconocido": lambda _: _clarify_combo_reply() if state == "clarifying_combo" else "",
+        "desconocido": lambda _: _clarify_combo_reply(),
     }
     handler = handlers.get(intent.type)
     if handler is None:

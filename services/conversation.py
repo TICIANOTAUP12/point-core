@@ -31,6 +31,9 @@ def _merge_slots(existing: SlotsGlobales, incoming: SlotsGlobales) -> SlotsGloba
 def _next_state(current: ConversationState, nlu: NluResult) -> ConversationState:
     intent_types = {i.type for i in nlu.intents}
 
+    if "saludo" in intent_types and current in {"handoff", "closed"}:
+        return "idle"
+
     if nlu.needs_human or "hablar_humano" in intent_types:
         return "handoff"
 

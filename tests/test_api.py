@@ -178,7 +178,7 @@ class TestAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["whatsapp_url"].startswith("https://wa.me/542646281854?text=")
-        assert "stock" in data["whatsapp_url"].lower() or "Stock" in data["reply"]
+        assert "entrega" in data["whatsapp_url"].lower() or "semana" in data["reply"].lower()
 
     def test_link_generate_by_text(self, client: TestClient) -> None:
         response = client.post("/link/generate", json={"text": "tienen stock?"})

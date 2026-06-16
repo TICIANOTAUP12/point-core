@@ -14,14 +14,14 @@ COMBO_ALIASES: dict[str, list[str]] = {
 
 INTENT_PATTERNS: list[tuple[IntentType, list[str], float]] = [
     ("hablar_humano", ["hablar con", "hablar con alguien", "persona", "humano", "asesor", "operador", "representante"], 0.92),
-    ("consulta_licencia", ["licencia", "solo software", "solo el software", "precio de la licencia", "licencia point"], 0.9),
+    ("consulta_licencia", ["licencia", "solo software", "solo el software", "precio de la licencia", "licencia point", "requisitos", "windows", "ram", "ssd", "i3"], 0.9),
     ("consulta_stock", ["stock", "disponibilidad", "tienen stock", "hay stock", "listos para entrega", "tienen disponible"], 0.88),
     ("modulo_locales", ["multi locales", "modulo locales", "módulo locales", "sucursales", "varios locales", "locales"], 0.85),
     ("modulo_caucion", ["modulo caucion", "módulo caución", "caucion", "caución", "deposito", "depósito", "garantia", "garantía"], 0.85),
     ("modulo_excel_central", ["excel central", "excel", "reportes consolidados", "datos para excel"], 0.85),
     ("modulo_demanda_estado", ["demanda de estado", "demanda estado", "estado de pedidos", "movimientos entre sucursales", "demanda"], 0.85),
     ("implementar", ["implementar", "instalar", "empezar hoy", "arrancar", "funcionando", "tenerlo funcionando"], 0.82),
-    ("consulta_precio", ["precio", "precios", "cuanto sale", "cuánto sale", "cuanto cuesta", "cuánto cuesta", "cuanto vale", "cuánto vale", "sale", "cuesta", "valor", "financiacion", "financiación", "cuotas"], 0.8),
+    ("consulta_precio", ["precio", "precios", "promo", "promocion", "promoción", "oferta", "ofertas", "cuanto sale", "cuánto sale", "cuanto cuesta", "cuánto cuesta", "cuanto vale", "cuánto vale", "como es", "cómo es", "sale", "cuesta", "valor", "financiacion", "financiación", "cuotas"], 0.8),
     ("saludo", ["hola", "buenas", "buen dia", "buenos dias", "buenas tardes", "buenas noches", "que tal", "qué tal"], 0.9),
     ("despedida", ["chau", "adios", "adiós", "hasta luego", "nos vemos", "gracias chau", "bye"], 0.88),
 ]
@@ -34,12 +34,15 @@ def normalize_text(text: str) -> str:
     normalized = unicodedata.normalize("NFD", lowered)
     without_accents = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
     collapsed = re.sub(r"\s+", " ", without_accents)
+    collapsed = re.sub(r"(\d)\s*cyma+x+\w*", r"\1 cymax", collapsed)
+    collapsed = re.sub(r"\bcyma+x+\w*\b", "cymax", collapsed)
     return collapsed
 
 
 def extract_quantity(text: str) -> int | None:
     patterns = [
         r"\b(\d{1,2})\s*(?:puestos?|cymax|combos?)\b",
+        r"\b(\d{1,2})cymax\b",
         r"\b(?:quiero|necesito|me interesan?)\s+(\d{1,2})\b",
         r"\b(\d{1,2})\s+x\b",
     ]
@@ -76,13 +79,22 @@ def _match_intents(text: str) -> list[Intent]:
     combo_id, combo_conf = detect_combo(text)
     qty = extract_quantity(text)
     has_purchase = any(kw in text for kw in PURCHASE_KEYWORDS)
+    intent_types = {i.type for i in found}
 
     if combo_id and (has_purchase or qty is not None):
         args: dict[str, object] = {"combo_id": combo_id, "cantidad": qty or 1}
         found.append(Intent(type="combo_compra", confidence=max(combo_conf, 0.9), args=args))
-    elif combo_id and "consulta_precio" in {i.type for i in found}:
-        args = {"combo_id": combo_id}
-        found.append(Intent(type="combo_compra", confidence=combo_conf, args={**args, "cantidad": qty or 1}))
+    elif combo_id and ("consulta_precio" in intent_types or qty is not None):
+        args = {"combo_id": combo_id, "cantidad": qty or 1}
+        found.append(Intent(type="combo_compra", confidence=combo_conf, args=args))
+    elif combo_id:
+        found.append(
+            Intent(
+                type="combo_compra",
+                confidence=combo_conf,
+                args={"combo_id": combo_id, "cantidad": qty or 1},
+            )
+        )
 
     if not found:
         if len(text) < 3 or re.fullmatch(r"[\W\d_]+", text):
@@ -134,11 +146,6 @@ def _build_slots(intents: list[Intent]) -> SlotsGlobales:
 def _needs_human(intents: list[Intent], text: str) -> bool:
     intent_types = {i.type for i in intents}
     if "hablar_humano" in intent_types:
-        return True
-    if "desconocido" in intent_types:
-        return True
-    low_confidence = [i for i in intents if i.confidence < CONFIDENCE_THRESHOLD]
-    if low_confidence and "saludo" not in intent_types:
         return True
     ambiguous_modulos = sum(1 for i in intents if i.type.startswith("modulo_"))
     if ambiguous_modulos >= 3:

@@ -59,7 +59,23 @@ class TestMandatoryPhrases:
     def test_gibberish(self) -> None:
         result = parse_message("asdkjhasd")
         assert any(i.type == "desconocido" for i in result.intents)
-        assert result.needs_human is True
+        assert result.needs_human is False
+
+    def test_promo_cymax(self) -> None:
+        result = parse_message("como es la promo de las cymax")
+        types = {i.type for i in result.intents}
+        assert "combo_compra" in types
+        combo = next(i for i in result.intents if i.type == "combo_compra")
+        assert combo.args["combo_id"] == "cymax"
+        assert result.needs_human is False
+
+    def test_typo_2cymaax(self) -> None:
+        result = parse_message("2cymaax")
+        types = {i.type for i in result.intents}
+        assert "combo_compra" in types
+        combo = next(i for i in result.intents if i.type == "combo_compra")
+        assert combo.args["combo_id"] == "cymax"
+        assert combo.args["cantidad"] == 2
 
 
 @pytest.mark.parametrize(
@@ -107,6 +123,18 @@ class TestConversationFlow:
         assert record.state == "handoff"
         assert record.needs_human is True
 
+    def test_hola_after_handoff(self, temp_db: str) -> None:
+        from services.conversation import process_message
+        from services.responder import build_reply
+
+        process_message("5496666666666", "quiero hablar con alguien")
+        record, nlu = process_message("5496666666666", "hola")
+        assert record.state == "idle"
+        assert record.needs_human is False
+        reply = build_reply(record, nlu)
+        assert "Te derivo" not in reply
+        assert "Hola" in reply
+
     def test_clarifying_combo_transition(self, temp_db: str) -> None:
         from services.conversation import process_message
 
@@ -126,6 +154,15 @@ class TestResponder:
         record, nlu = process_message("5494444444444", "precio del basico")
         reply = build_reply(record, nlu)
         assert "$855.000" in reply
+
+    def test_promo_cymax_reply(self, temp_db: str) -> None:
+        from services.conversation import process_message
+        from services.responder import build_reply
+
+        record, nlu = process_message("5497777777777", "como es la promo de las cymax")
+        reply = build_reply(record, nlu)
+        assert "$1.050.000" in reply
+        assert "Te derivo" not in reply
 
     def test_multi_module_reply(self, temp_db: str) -> None:
         from services.conversation import process_message
